@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demanda Inducida | Sistema Seguro</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+
+    <style>
+        body { display: none; } /* Se muestra solo tras la clave */
+        .chart-container { position: relative; height: 320px; width: 100%; }
+        .card-stat { border-radius: 2.5rem; background: white; padding: 1.5rem; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border-bottom: 6px solid #6366f1; }
+        .btn-filter { font-size: 10px; font-weight: 800; border-radius: 1rem; padding: 0.6rem 1rem; border: 2px solid #f1f5f9; transition: 0.2s; background: white; cursor: pointer; text-transform: uppercase; }
+        .btn-filter.active { background: #6366f1 !important; color: white !important; border-color: #6366f1 !important; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
+        .card-special { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; border-radius: 2.5rem; padding: 2rem; }
+        .date-input { border: 2px solid #f1f5f9; border-radius: 1rem; padding: 0.5rem; font-weight: bold; color: #475569; outline: none; }
+        .ruta-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.8rem; }
+    </style>
+</head>
+<body class="bg-[#f8fafc] text-slate-900 font-sans">
+
+    <script>
+        // SEGURIDAD MEJORADA: Se ejecuta después de cargar librerías
+        window.onload = function() {
+            const passwordCorrecta = "HLMP2026*";
+            const intento = prompt("ACCESO RESTRINGIDO\nIngrese la contraseña para activar el visor:");
+            if (intento === passwordCorrecta) {
+                document.body.style.display = "block";
+            } else {
+                alert("Contraseña incorrecta.");
+                window.location.reload();
+            }
+        };
+    </script>
+
+    <header class="bg-white border-b border-slate-200 p-4 sticky top-0 z-50 shadow-sm">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-6">
+                <img src="Logo hospital contorno.png" alt="Logo Hospital" class="h-14 object-contain" onerror="this.style.display='none'">
+                <h1 class="font-black text-slate-700 uppercase tracking-tighter text-xl">Demanda Inducida</h1>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="location.reload()" class="bg-slate-100 text-slate-500 px-6 py-3 rounded-2xl font-bold text-xs hover:bg-rose-50 transition uppercase">Bloquear</button>
+                <label class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-2xl font-black cursor-pointer transition shadow-lg flex items-center gap-2 text-sm uppercase">
+                    <span>Seleccionar Archivo</span>
+                    <input type="file" id="fileInput" class="hidden" accept=".xlsx, .xls, .csv">
+                </label>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto py-10 px-6">
+        <div id="welcome" class="bg-white p-16 rounded-[4rem] shadow-2xl text-center border border-slate-100 my-10 max-w-4xl mx-auto flex flex-col items-center">
+            <img src="Mascota_2_final-removebg-preview.png" alt="Mascota" class="max-h-[200px] mb-10 drop-shadow-xl" onerror="this.src='https://via.placeholder.com/200?text=HLMP'">
+            <h2 class="text-6xl font-black text-slate-800 mb-4 italic tracking-tight uppercase">Demanda Inducida</h2>
+            <div class="bg-indigo-50 px-14 py-8 rounded-[3rem] border border-indigo-100 shadow-inner">
+                <p class="text-indigo-800 text-xs font-black uppercase tracking-[0.5em] mb-3">Diseño y Analítica:</p>
+                <p class="text-indigo-950 text-4xl font-black uppercase italic tracking-tighter">Edgar Fabiany Gutierrez</p>
+            </div>
+        </div>
+
+        <div id="dashboard" class="hidden space-y-10">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-center">
+                <div class="card-stat border-b-indigo-600"><p class="text-[10px] font-black text-slate-400 uppercase mb-1">Total</p><h3 class="text-6xl font-black text-slate-800" id="k-total">0</h3></div>
+                <div class="card-stat border-b-emerald-500"><p class="text-[10px] font-black text-slate-400 uppercase mb-1">ESE HLMP</p><h3 class="text-6xl font-black text-emerald-600" id="k-ese">0</h3></div>
+                <div class="card-stat border-b-rose-500"><p class="text-[10px] font-black text-slate-400 uppercase mb-1">Mujeres</p><h3 class="text-6xl font-black text-rose-600" id="k-m">0</h3></div>
+                <div class="card-stat border-b-blue-500"><p class="text-[10px] font-black text-slate-400 uppercase mb-1">Hombres</p><h3 class="text-6xl font-black text-blue-600" id="k-h">0</h3></div>
+            </div>
+
+            <div class="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-100 flex flex-wrap items-center justify-center gap-8">
+                <div><p class="text-[10px] font-black text-indigo-600 mb-2">INICIO</p><input type="date" id="dateStart" class="date-input" onchange="render()"></div>
+                <div><p class="text-[10px] font-black text-indigo-600 mb-2">FIN</p><input type="date" id="dateEnd" class="date-input" onchange="render()"></div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="card-special flex justify-between items-center shadow-xl">
+                    <div><h2 class="text-4xl font-black uppercase italic">Crónicos</h2><p class="opacity-70">(HTA-DM)</p></div>
+                    <span class="text-8xl font-black" id="k-cron">0</span>
+                </div>
+                <div class="bg-white border-2 border-slate-100 rounded-[3rem] p-8 flex justify-between items-center shadow-sm">
+                    <h2 class="text-4xl font-black uppercase italic text-slate-700">Morbilidad</h2>
+                    <span class="text-8xl font-black text-indigo-600" id="k-morb">0</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100">
+                    <h3 class="text-xs font-black text-indigo-700 uppercase mb-4 italic">Microterritorio:</h3>
+                    <div id="mtCont" class="flex flex-wrap gap-2"></div>
+                </div>
+                <div class="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100">
+                    <h3 class="text-xs font-black text-indigo-700 uppercase mb-4 italic">Ciclo de Vida:</h3>
+                    <div id="cicloCont" class="flex flex-wrap gap-2"></div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="bg-white p-10 rounded-[4rem] shadow-sm border border-slate-100"><canvas id="c-ciclo"></canvas></div>
+                <div class="bg-white p-10 rounded-[4rem] shadow-sm border border-slate-100"><canvas id="c-eps"></canvas></div>
+            </div>
+
+            <div class="bg-white p-12 rounded-[4rem] shadow-sm border border-slate-100">
+                <h3 class="font-black text-slate-700 uppercase text-xs mb-8 italic">Rutas (Filtro por clic):</h3>
+                <div class="ruta-grid" id="profRutas"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Lógica de procesamiento de datos
+        let raw = [], filtered = [], charts = {}, activeFilters = { mt: null, ciclo: null, ruta: null };
+        const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6', '#06b6d4', '#ec4899', '#94a3b8', '#1e293b'];
+
+        const RUTA_MAP = {
+            26: "VACUNA", 27: "ODONTO", 28: "PLANIF", 29: "PRECON", 31: "PRENATAL", 
+            43: "ADULTO", 44: "VEJEZ", 45: "MAMA", 48: "CITO", 51: "PSICO", 53: "NUTRI"
+        };
+
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            const ext = file.name.split('.').pop().toLowerCase();
+
+            if (ext === 'csv') {
+                Papa.parse(file, { skipEmptyLines: true, complete: (r) => processData(r.data) });
+            } else {
+                reader.onload = (e) => {
+                    const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                    const sn = wb.SheetNames.find(n => n.toUpperCase().includes("DEMANDA")) || wb.SheetNames[0];
+                    processData(XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1 }));
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        });
+
+        function processData(rows) {
+            let hIdx = rows.findIndex(r => r && (r.includes("TERRITORIO") || r.includes("CICLO")));
+            if (hIdx === -1) hIdx = 2;
+            raw = rows.slice(hIdx + 1).filter(r => r[1] || r[5]).map(r => {
+                const isX = (v) => (v || "").toString().trim().toUpperCase() === "X";
+                let rutas = {}; Object.keys(RUTA_MAP).forEach(k => { rutas[RUTA_MAP[k]] = isX(r[k]); });
+                return {
+                    _mt: (r[1] || "S.D").toString().trim().toUpperCase(),
+                    _fecha: r[4] ? new Date(r[4]).toISOString().split('T')[0] : null,
+                    _ciclo: (r[14] || "S.D").toString().trim().toUpperCase(),
+                    _sexo: (r[15] || "").toString().trim().toUpperCase(),
+                    _eps: (r[17] || "OTRA").toString().trim().toUpperCase(),
+                    _ese: (r[19] || "").toString().trim().toUpperCase(),
+                    _cron: isX(r[54]), _morb: isX(r[55]), _rutas: rutas
+                };
+            });
+            document.getElementById('welcome').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            render();
+        }
+
+        function render() {
+            const start = document.getElementById('dateStart').value;
+            const end = document.getElementById('dateEnd').value;
+            filtered = raw.filter(d => {
+                const fM = (!start || d._fecha >= start) && (!end || d._fecha <= end);
+                const mtM = !activeFilters.mt || d._mt === activeFilters.mt;
+                const cicloM = !activeFilters.ciclo || d._ciclo === activeFilters.ciclo;
+                const rutaM = !activeFilters.ruta || d._rutas[activeFilters.ruta];
+                return fM && mtM && cicloM && rutaM;
+            });
+
+            document.getElementById('k-total').textContent = filtered.length;
+            document.getElementById('k-ese').textContent = filtered.filter(d => d._ese.includes("SI")).length;
+            document.getElementById('k-m').textContent = filtered.filter(d => d._sexo.startsWith("F")).length;
+            document.getElementById('k-h').textContent = filtered.filter(d => d._sexo.startsWith("M")).length;
+            document.getElementById('k-cron').textContent = filtered.filter(d => d._cron).length;
+            document.getElementById('k-morb').textContent = filtered.filter(d => d._morb).length;
+
+            renderFilterBtns('mtCont', '_mt', 'mt');
+            renderFilterBtns('cicloCont', '_ciclo', 'ciclo');
+            renderRutas();
+            updateChart('c-ciclo', 'bar', '_ciclo');
+            updateChart('c-eps', 'doughnut', '_eps');
+        }
+
+        function renderFilterBtns(id, key, type) {
+            const cont = document.getElementById(id);
+            const vals = [...new Set(raw.map(d => d[key]))].sort();
+            cont.innerHTML = '';
+            vals.forEach(v => {
+                if(!v || v === "S.D") return;
+                const b = document.createElement('button');
+                b.className = `btn-filter ${activeFilters[type] === v ? 'active' : ''}`;
+                b.textContent = v;
+                b.onclick = () => { activeFilters[type] = activeFilters[type] === v ? null : v; render(); };
+                cont.appendChild(b);
+            });
+        }
+
+        function renderRutas() {
+            const cont = document.getElementById('profRutas'); cont.innerHTML = '';
+            Object.values(RUTA_MAP).forEach(r => {
+                const c = filtered.filter(d => d._rutas[r]).length;
+                if(c === 0 && !activeFilters.ruta) return;
+                const b = document.createElement('button');
+                b.className = `p-4 rounded-3xl border-2 ${activeFilters.ruta === r ? 'bg-indigo-600 text-white' : 'bg-white'}`;
+                b.innerHTML = `<span class="text-[8px] font-black">${r}</span><br><span class="text-2xl font-black">${c}</span>`;
+                b.onclick = () => { activeFilters.ruta = activeFilters.ruta === r ? null : r; render(); };
+                cont.appendChild(b);
+            });
+        }
+
+        function updateChart(id, type, key) {
+            if(charts[id]) charts[id].destroy();
+            const counts = {}; filtered.forEach(d => { counts[d[key]] = (counts[d[key]] || 0) + 1; });
+            charts[id] = new Chart(document.getElementById(id), {
+                type: type,
+                data: { labels: Object.keys(counts), datasets: [{ data: Object.values(counts), backgroundColor: COLORS }] },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+    </script>
+</body>
+</html>
